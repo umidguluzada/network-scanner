@@ -11,6 +11,8 @@ import json
 import ipaddress
 import argparse
 import html
+import os
+import webbrowser
 import concurrent.futures
 from datetime import datetime
 
@@ -264,6 +266,26 @@ def save_html(results: list[dict], filename: str, targets: list[str], ports: lis
     print(f"[*] HTML report saved to: {filename}")
 
 
+def open_in_browser(filename: str):
+    """Opens the given HTML file in the system's default browser."""
+    abs_path = os.path.abspath(filename)
+    if not os.path.exists(abs_path):
+        print(f"[!] Could not open report, file not found: {abs_path}")
+        return
+
+    try:
+        opened = webbrowser.open(f"file://{abs_path}")
+    except Exception as e:
+        opened = False
+        print(f"[!] Browser could not be launched: {e}")
+
+    if opened:
+        print(f"[*] Opened report in browser: {abs_path}")
+    else:
+        print(f"[i] Could not auto-open a browser (e.g. headless/SSH session).")
+        print(f"    View the report manually at: {abs_path}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="TCP Connect Port & Banner Grabber Scanner")
     parser.add_argument("-t", "--targets", required=True,
@@ -276,6 +298,9 @@ def main():
                          help="Number of parallel threads (default: 200)")
     parser.add_argument("--html", action="store_true",
                          help="Also generate an HTML report (report.html)")
+    parser.add_argument("--no-open", action="store_true",
+                         help="Do NOT auto-open the HTML report in the browser "
+                              "(by default it opens automatically when --html is used)")
     parser.add_argument("--common", action="store_true",
                          help=f"Scan only the {len(COMMON_PORTS)} most common ports instead of a range "
                               "(fast preset: SSH, HTTP, HTTPS, RDP, MySQL, etc.)")
@@ -296,6 +321,9 @@ def main():
     if args.html:
         html_filename = args.output.rsplit(".", 1)[0] + ".html"
         save_html(results, html_filename, targets, ports)
+
+        if not args.no_open:
+            open_in_browser(html_filename)
 
     print(f"\n[✓] Scan complete. Found {len(results)} open port(s).")
 
